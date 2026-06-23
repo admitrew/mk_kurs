@@ -1,0 +1,23 @@
+Connections for the course project
+
+1. DS18B20 digital sensors
+- DQ line: PB11, see ds18b20.h / ds18b20.c port configuration.
+- Use a pull-up resistor on the 1-Wire data line.
+
+2. LM75B / LM75A I2C temperature sensor
+- SDA = PB7 / I2C1_SDA.
+- SCL = PB6 / I2C1_SCL.
+- OS  = PB10 / Arduino D6, configured in main.c as input with pull-up.
+- VCC = 3.3 V, GND = GND.
+- Address in main.c: LM75B_ADDRESS = 0x90, which corresponds to 7-bit address 0x48.
+- LM75A address pins A0, A1, A2 should be connected to GND for address 0x48.
+- OS is open-drain and active LOW in the current configuration. The firmware writes Tos = 29.0 C and Thyst = 28.0 C, so OS becomes LOW above 29 C and returns HIGH below 28 C.
+- The MCU internal pull-up is enabled on PB10. For a real breadboard connection, an additional 10 kOhm to 3.3 V on OS is recommended.
+
+3. UART output
+- USART2_TX = PA2.
+- USART2_RX = PA3.
+- Baud rate: 9600.
+
+Program output contains DS18B20 readings and LM75B/LM75A temperature readings. The LM75A OS input on PB10/D6 is used internally for alarm logic and is not printed when inactive.
+Analog temperature sensor inputs on PA0 / PA1 and their ADC conversion code were removed.
