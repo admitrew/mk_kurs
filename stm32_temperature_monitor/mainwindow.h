@@ -10,6 +10,8 @@ class QPushButton;
 class QLabel;
 class QTextEdit;
 class QTableWidget;
+class QDoubleSpinBox;
+class QSpinBox;
 
 class MainWindow : public QMainWindow
 {
@@ -25,14 +27,17 @@ private slots:
     void disconnectPort();
     void readPort();
     void serialError(QSerialPort::SerialPortError error);
+    void applyLm75Settings();
+    void applyDs18b20Settings();
 
 private:
     void createUi();
     void setConnected(bool connected);
     void appendLog(const QString &text);
     void parseLine(const QString &line);
-    void setSensor(int row, double temp, bool ok);
+    void setSensor(int row, double temp, bool ok, double warningLimit);
     void setAlarm(const QString &text, bool active);
+    void sendCommand(const QString &command);
 
 private:
     QSerialPort serial;
@@ -47,6 +52,16 @@ private:
     QLabel *alarmLabel = nullptr;
     QTableWidget *table = nullptr;
     QTextEdit *logEdit = nullptr;
+
+    QDoubleSpinBox *lm75OnSpin = nullptr;
+    QDoubleSpinBox *lm75OffSpin = nullptr;
+    QPushButton *applyLm75Button = nullptr;
+
+    QComboBox *dsTargetBox = nullptr;
+    QComboBox *dsResolutionBox = nullptr;
+    QSpinBox *dsTlSpin = nullptr;
+    QSpinBox *dsThSpin = nullptr;
+    QPushButton *applyDsButton = nullptr;
 };
 
 #endif

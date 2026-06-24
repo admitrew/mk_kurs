@@ -86,28 +86,78 @@ void ds18b20_MatchRom(uint8_t* address)
 
 
 //-----------------------------------------------
-void ds18b20_Init(uint8_t mode, uint8_t* address, uint8_t res_bits) 
-	{ 
-    uint8_t config_byte;
-    if (res_bits == 12) config_byte = 0x00;
-    else if (res_bits == 11) config_byte = 0x10;
-    else if (res_bits == 10) config_byte = 0x20;
-    else if (res_bits == 9) config_byte = 0x30;
-    else return;  
+static uint8_t ds18b20_ResolutionToConfig(uint8_t res_bits)
+{
+  if (res_bits == 9U)  return RESOLUTION_9BIT;
+  if (res_bits == 10U) return RESOLUTION_10BIT;
+  if (res_bits == 11U) return RESOLUTION_11BIT;
+  if (res_bits == 12U) return RESOLUTION_12BIT;
+  return 0U;
+}
 
-    ds18b20_Reset();
-    if (mode == 0) ds18b20_WriteByte(SKIP_ROM);
-    else ds18b20_MatchRom(address);
-    ds18b20_WriteByte(WRITE_SCRATCHPAD);  // 0x0F
-    ds18b20_WriteByte(0x64);               // TH=100°C
-    ds18b20_WriteByte(0xFF9E);               // Tl˜-30°C 
-    ds18b20_WriteByte(config_byte);        
+static uint8_t ds18b20_SelectDevice(uint8_t mode, uint8_t* address)
+{
+    uint8_t i;
+    if (ds18b20_Reset()) {
+        return 0U;
+    }
 
-    ds18b20_Reset();
-    if (mode == 0) ds18b20_WriteByte(SKIP_ROM);
-    else ds18b20_MatchRom(address);
-    ds18b20_WriteByte(0x48);  // Copy Scratchpad
-    DelayMicro(10000);        // 
+    if (mode == 0U) {
+        ds18b20_WriteByte(SKIP_ROM);
+    } else {
+        ds18b20_WriteByte(MATCH_CODE);
+        for (i = 0U; i < 8U; i++) {
+            ds18b20_WriteByte(address[i]);
+        }
+    }
+
+    return 1U;
+}
+
+uint8_t ds18b20_WriteConfig(uint8_t mode, uint8_t* address, uint8_t res_bits, int8_t tl, int8_t th)
+{
+    uint8_t config_byte = ds18b20_ResolutionToConfig(res_bits);
+    uint32_t wait_cnt;
+
+    if (config_byte == 0U) {
+        return 0U;
+    }
+
+    /* 1) Apply settings to the sensor scratchpad: TH, TL, configuration byte. */
+    if (!ds18b20_SelectDevice(mode, address)) {
+        return 0U;
+    }
+    ds18b20_WriteByte(WRITE_SCRATCHPAD);
+    ds18b20_WriteByte((uint8_t)th);
+    ds18b20_WriteByte((uint8_t)tl);
+    ds18b20_WriteByte(config_byte);
+
+    /* 2) Copy scratchpad to EEPROM so the configuration remains in the sensor. */
+    if (!ds18b20_SelectDevice(mode, address)) {
+        return 0U;
+    }
+    ds18b20_WriteByte(COPY_SCRATCHPAD);
+    DelayMicro(20000U);
+
+    /* 3) Recall EEPROM back to scratchpad. Reading after this checks the real
+       configuration stored by the DS18B20, not only local variables. */
+    if (!ds18b20_SelectDevice(mode, address)) {
+        return 0U;
+    }
+    ds18b20_WriteByte(RECALL_E2);
+    for (wait_cnt = 0U; wait_cnt < 1000U; wait_cnt++) {
+        if (ds18b20_ReadBit()) {
+            break;
+        }
+        DelayMicro(10U);
+    }
+
+    return 1U;
+}
+
+void ds18b20_Init(uint8_t mode, uint8_t* address, uint8_t res_bits)
+{
+    (void)ds18b20_WriteConfig(mode, address, res_bits, -30, 100);
 }
 //----------------------------------------------------------
 void ds18b20_ConvertTemp(uint8_t mode, uint8_t* address)
