@@ -13,6 +13,7 @@
 #include <QMessageBox>
 #include <QMap>
 #include <QBrush>
+#include <QRegularExpression>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -197,7 +198,7 @@ void MainWindow::connectPort()
     }
 
     serial.setPortName(portBox->currentText());
-    serial.setBaudRate(QSerialPort::Baud115200);
+    serial.setBaudRate(QSerialPort::Baud9600);
     serial.setDataBits(QSerialPort::Data8);
     serial.setParity(QSerialPort::NoParity);
     serial.setStopBits(QSerialPort::OneStop);
@@ -244,6 +245,69 @@ void MainWindow::parseLine(const QString &line)
 {
     appendLog("RX: " + line);
 
+    QString upper = line.toUpper();
+
+    auto parseNumber = [](QString text, double &value) -> bool {
+        int eqPos = text.indexOf('=');
+
+        if (eqPos >= 0) {
+            text = text.mid(eqPos + 1);
+        }
+
+        QRegularExpression re(R"((-?\d+(?:[.,]\d+)?))");
+        QRegularExpressionMatch match = re.match(text);
+
+        if (!match.hasMatch()) {
+            return false;
+        }
+
+        QString number = match.captured(1);
+        number.replace(',', '.');
+
+        bool ok = false;
+        value = number.toDouble(&ok);
+
+        return ok;
+    };
+
+    auto updateHumanLine = [&](const QString &name, int row) -> bool {
+        if (!upper.contains(name)) {
+            return false;
+        }
+
+        if (!upper.contains("TEMP")) {
+            return false;
+        }
+
+        double temp = 0.0;
+
+        if (!parseNumber(line, temp)) {
+            setSensor(row, 0.0, false);
+            return true;
+        }
+
+        setSensor(row, temp, true);
+        statusLabel->setText("Данные получены");
+
+        return true;
+    };
+
+    if (updateHumanLine("SENSOR 1", 2)) {
+        return;
+    }
+
+    if (updateHumanLine("SENSOR 2", 3)) {
+        return;
+    }
+
+    if (updateHumanLine("LM75A", 0)) {
+        return;
+    }
+
+    if (updateHumanLine("LM75B", 1)) {
+        return;
+    }
+
     QMap<QString, QString> data;
 
     for (const QString &part : line.split(';', Qt::SkipEmptyParts)) {
@@ -265,8 +329,9 @@ void MainWindow::parseLine(const QString &line)
             QString k = key.toUpper();
 
             if (data.contains(k)) {
-                bool ok = false;
-                double temp = data[k].toDouble(&ok);
+                double temp = 0.0;
+                bool ok = parseNumber(data[k], temp);
+
                 setSensor(row, temp, ok);
                 return;
             }
@@ -275,19 +340,21 @@ void MainWindow::parseLine(const QString &line)
 
     readTemp({"LM75A", "LM75_1"}, 0);
     readTemp({"LM75B", "LM75_2"}, 1);
-    readTemp({"DS1", "DS18B20_1"}, 2);
-    readTemp({"DS2", "DS18B20_2"}, 3);
+    readTemp({"DS1", "DS18B20_1", "SENSOR1"}, 2);
+    readTemp({"DS2", "DS18B20_2", "SENSOR2"}, 3);
 
     QString os = data.value("OS", "0");
     QString alarm = data.value("ALARM", "0");
 
     if (alarm == "1" || os != "0") {
         setAlarm("Аварийный сигнал OS: " + os, true);
-    } else {
+    } else if (!data.isEmpty()) {
         setAlarm("Аварийный сигнал OS: норма", false);
     }
 
-    statusLabel->setText("Данные получены");
+    if (!data.isEmpty()) {
+        statusLabel->setText("Данные получены");
+    }
 }
 
 void MainWindow::setSensor(int row, double temp, bool ok)
