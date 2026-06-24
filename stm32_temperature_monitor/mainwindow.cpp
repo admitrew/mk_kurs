@@ -44,7 +44,7 @@ void MainWindow::createUi()
     QLabel *title = new QLabel("Мониторинг температуры STM32", this);
     title->setObjectName("title");
 
-    QLabel *subtitle = new QLabel("LM75A / LM75B / DS18B20 x2 / UART", this);
+    QLabel *subtitle = new QLabel("LM75A / DS18B20 x2 / UART", this);
     subtitle->setObjectName("subtitle");
 
     statusLabel = new QLabel("Отключено", this);
@@ -78,21 +78,20 @@ void MainWindow::createUi()
 
     mainLayout->addLayout(connection);
 
-    table = new QTableWidget(4, 4, this);
+    table = new QTableWidget(3, 4, this);
     table->setHorizontalHeaderLabels({"Датчик", "Интерфейс", "Температура", "Состояние"});
     table->verticalHeader()->hide();
     table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table->setSelectionMode(QAbstractItemView::NoSelection);
 
-    const QString rows[4][2] = {
-        {"LM75A", "I2C"},
-        {"LM75B", "I2C"},
-        {"DS18B20 №1", "1-Wire"},
-        {"DS18B20 №2", "1-Wire"}
+    const QString rows[3][2] = {
+    {"LM75A", "I2C"},
+    {"DS18B20 №1", "1-Wire"},
+    {"DS18B20 №2", "1-Wire"}
     };
 
-    for (int r = 0; r < 4; r++) {
+    for (int r = 0; r < 3; r++) {
         table->setItem(r, 0, new QTableWidgetItem(rows[r][0]));
         table->setItem(r, 1, new QTableWidgetItem(rows[r][1]));
         table->setItem(r, 2, new QTableWidgetItem("--.-- °C"));
@@ -292,19 +291,19 @@ void MainWindow::parseLine(const QString &line)
         return true;
     };
 
-    if (updateHumanLine("SENSOR 1", 2)) {
-        return;
-    }
-
-    if (updateHumanLine("SENSOR 2", 3)) {
-        return;
-    }
-
     if (updateHumanLine("LM75A", 0)) {
         return;
     }
 
-    if (updateHumanLine("LM75B", 1)) {
+    if (updateHumanLine("LM75", 0)) {
+        return;
+    }
+
+    if (updateHumanLine("SENSOR 1", 1)) {
+        return;
+    }
+
+    if (updateHumanLine("SENSOR 2", 2)) {
         return;
     }
 
@@ -338,10 +337,9 @@ void MainWindow::parseLine(const QString &line)
         }
     };
 
-    readTemp({"LM75A", "LM75_1"}, 0);
-    readTemp({"LM75B", "LM75_2"}, 1);
-    readTemp({"DS1", "DS18B20_1", "SENSOR1"}, 2);
-    readTemp({"DS2", "DS18B20_2", "SENSOR2"}, 3);
+    readTemp({"LM75A", "LM75"}, 0);
+    readTemp({"DS1", "DS18B20_1", "SENSOR1"}, 1);
+    readTemp({"DS2", "DS18B20_2", "SENSOR2"}, 2);
 
     QString os = data.value("OS", "0");
     QString alarm = data.value("ALARM", "0");

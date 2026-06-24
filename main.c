@@ -351,6 +351,26 @@ static uint8_t LM75B_ReadTemperature(float *temp) {
     return 1U;
 }
 
+static void Send_Data_To_PC(float lm75a_temp, uint8_t os_active, uint8_t alarm)
+{
+    USART2_Print("LM75A=");
+    USART2_PrintFloat(lm75a_temp, "");
+
+    USART2_Print(";DS1=");
+    USART2_PrintFloat(sensors[0].temp, "");
+
+    USART2_Print(";DS2=");
+    USART2_PrintFloat(sensors[1].temp, "");
+
+    USART2_Print(";OS=");
+    USART2_Print(os_active ? "LM75A" : "0");
+
+    USART2_Print(";ALARM=");
+    USART2_Print(alarm ? "1" : "0");
+
+    USART2_Print("\r\n");
+}
+
 int main(void) {
     uint8_t devCount = 0;
     uint8_t i = 0;
@@ -459,13 +479,15 @@ int main(void) {
         }
 
         USART2_Print("\n\r");
-
+        
+        Send_Data_To_PC(lm75b_temp, os_active, alarm);
+        
         if (alarm) {
             LED_Blink(200000U);
         } else {
             LED_Off();
         }
-
+        
         DelayMicro(1000000U);
     }
 }
