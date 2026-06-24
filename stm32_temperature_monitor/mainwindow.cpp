@@ -19,6 +19,8 @@
 #include <QDoubleSpinBox>
 #include <QSpinBox>
 
+static constexpr double DS18B20_ALARM_LIMIT = 29.0;
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
@@ -373,10 +375,11 @@ void MainWindow::parseLine(const QString &line)
     };
 
     table->setUpdatesEnabled(false);
-
-    readTemp("LM75A", 0, lm75OnSpin->value());
-    readTemp("DS1", 1, dsThSpin->value());
-    readTemp("DS2", 2, dsThSpin->value());
+    
+    double lm75Limit = lm75OnSpin ? lm75OnSpin->value() : 29.0;
+    readTemp("LM75A", 0, lm75Limit);
+    readTemp("DS1", 1, DS18B20_ALARM_LIMIT);
+    readTemp("DS2", 2, DS18B20_ALARM_LIMIT);
 
     table->setUpdatesEnabled(true);
 
